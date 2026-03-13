@@ -1,3 +1,5 @@
 /.idea
 /web
 /nightly
+/.gradle-client
+/.gradle-extractor
