@@ -38,6 +38,15 @@ jobs:
       - name: Ensure Gradle wrapper is executable
         run: chmod +x PipePipeClient/gradlew
 
+      - name: Prepare signing keystore
+        if: ${{ secrets.PIPEPIPE_SIGNING_KEYSTORE_BASE64 != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p PipePipeClient/keystore
+          printf '%s' '${{ secrets.PIPEPIPE_SIGNING_KEYSTORE_BASE64 }}' | base64 --decode \
+            > PipePipeClient/keystore/pipepipe-daily-debug.keystore
+
       - name: Prepare daily build metadata
         id: metadata
         shell: bash
@@ -64,7 +73,23 @@ jobs:
         env:
           UPDATE_API_URL: https://api.github.com/repos/${{ github.repository }}/releases/tags/daily-latest
           UPDATE_RELEASE_URL: https://github.com/${{ github.repository }}/releases/tag/daily-latest
+          SIGNING_STORE_PASSWORD: ${{ secrets.PIPEPIPE_SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.PIPEPIPE_SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.PIPEPIPE_SIGNING_KEY_PASSWORD }}
         run: |
+          signing_args=()
+          if [[ -f keystore/pipepipe-daily-debug.keystore \
+              && -n "${SIGNING_STORE_PASSWORD}" \
+              && -n "${SIGNING_KEY_ALIAS}" \
+              && -n "${SIGNING_KEY_PASSWORD}" ]]; then
+            signing_args+=(
+              "-Ppipepipe.signingStoreFile=keystore/pipepipe-daily-debug.keystore"
+              "-Ppipepipe.signingStorePassword=${SIGNING_STORE_PASSWORD}"
+              "-Ppipepipe.signingKeyAlias=${SIGNING_KEY_ALIAS}"
+              "-Ppipepipe.signingKeyPassword=${SIGNING_KEY_PASSWORD}"
+            )
+          fi
+
           ./gradlew assembleDebug -DskipFormatKtlint \
             -Ppipepipe.debugAppName='PipePipe Daily' \
             -Ppipepipe.debugPackageSuffix='.debug' \
@@ -74,7 +99,8 @@ jobs:
             -Ppipepipe.debugUpdateSourceLabel='${{ github.repository }} / daily-latest' \
             -Ppipepipe.debugUpdateApiUrl="${UPDATE_API_URL}" \
             -Ppipepipe.debugUpdateReleaseUrl="${UPDATE_RELEASE_URL}" \
-            -Ppipepipe.updateBuildId='${{ steps.metadata.outputs.build_id }}'
+            -Ppipepipe.updateBuildId='${{ steps.metadata.outputs.build_id }}' \
+            "${signing_args[@]}"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v6
