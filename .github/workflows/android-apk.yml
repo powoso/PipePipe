@@ -39,12 +39,18 @@ jobs:
         run: chmod +x PipePipeClient/gradlew
 
       - name: Prepare signing keystore
-        if: ${{ secrets.PIPEPIPE_SIGNING_KEYSTORE_BASE64 != '' }}
         shell: bash
+        env:
+          PIPEPIPE_SIGNING_KEYSTORE_BASE64: ${{ secrets.PIPEPIPE_SIGNING_KEYSTORE_BASE64 }}
         run: |
           set -euo pipefail
+          if [[ -z "${PIPEPIPE_SIGNING_KEYSTORE_BASE64}" ]]; then
+            echo "No shared signing keystore configured; using default signing."
+            exit 0
+          fi
+
           mkdir -p PipePipeClient/keystore
-          printf '%s' '${{ secrets.PIPEPIPE_SIGNING_KEYSTORE_BASE64 }}' | base64 --decode \
+          printf '%s' "${PIPEPIPE_SIGNING_KEYSTORE_BASE64}" | base64 --decode \
             > PipePipeClient/keystore/pipepipe-daily-debug.keystore
 
       - name: Prepare daily build metadata
