@@ -85,7 +85,7 @@ jobs:
           path: PipePipeClient/app/build/outputs/apk/debug/*.apk
 
       - name: Publish rolling prerelease
-        if: ${{ inputs.publish_release }}
+        if: ${{ github.event_name == 'push' || inputs.publish_release }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: daily-latest
