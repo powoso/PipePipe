@@ -1,6 +1,9 @@
 name: Android APK
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       publish_release:
@@ -8,6 +11,10 @@ on:
         required: false
         type: boolean
         default: true
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-apk:
