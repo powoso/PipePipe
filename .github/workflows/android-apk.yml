@@ -57,16 +57,35 @@ jobs:
         id: metadata
         shell: bash
         run: |
+          set -euo pipefail
           version_name=$(grep -m1 'versionName "' PipePipeClient/app/build.gradle | sed -E 's/.*versionName "([^"]+)".*/\1/')
           short_sha="${GITHUB_SHA::7}"
           build_timestamp=$(date -u +'%Y%m%d%H%M%S')
           build_id="${build_timestamp}-${short_sha}"
+          root_changes=$(git log --no-merges --pretty=format:'- %s (%h)' -n 3)
+          client_changes=$(git -C PipePipeClient log --no-merges --pretty=format:'- %s (%h)' -n 3)
+          extractor_changes=$(git -C PipePipeExtractor log --no-merges --pretty=format:'- %s (%h)' -n 2)
 
           echo "version_name=${version_name}" >> "$GITHUB_OUTPUT"
           echo "build_id=${build_id}" >> "$GITHUB_OUTPUT"
 
           {
             echo "Rolling daily release for PipePipe Daily."
+            echo
+            echo "What changed:"
+            if [[ -n "${root_changes}" ]]; then
+              echo "${root_changes}"
+            fi
+            if [[ -n "${client_changes}" ]]; then
+              echo
+              echo "PipePipeClient:"
+              echo "${client_changes}"
+            fi
+            if [[ -n "${extractor_changes}" ]]; then
+              echo
+              echo "PipePipeExtractor:"
+              echo "${extractor_changes}"
+            fi
             echo
             echo "Version-Name: ${version_name}"
             echo "Build-ID: ${build_id}"
